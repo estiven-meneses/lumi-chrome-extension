@@ -417,10 +417,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try {
           let groupId = activeTab.groupId;
           if (groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
-            groupId = await chrome.tabs.group({ tabIds: [activeTab.id, ...message.tabIds] });
+            groupId = await retryTabGroup(() => chrome.tabs.group({ tabIds: [activeTab.id, ...message.tabIds] }));
             currentGroupId = groupId;
           } else {
-            await chrome.tabs.group({ tabIds: message.tabIds, groupId: groupId });
+            await retryTabGroup(() => chrome.tabs.group({ tabIds: message.tabIds, groupId: groupId }));
           }
           sendResponse({ success: true, groupId });
         } catch (e) {
@@ -473,9 +473,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // async
   }
   else if (message.type === 'ADD_TAB_TO_GROUP') {
-    addCurrentTabToGroup().then(() => {
-      sendResponse({ success: true });
-    });
+    addCurrentTabToGroup()
+      .then(result => sendResponse(result))
+      .catch(err => sendResponse({ error: err.message }));
     return true;
   }
   else if (message.type === 'TOGGLE_MARKS') {
@@ -529,6 +529,19 @@ chrome.tabGroups.onRemoved.addListener((tabGroup) => {
   }
 });
 
+// Retry helper for tab group operations that can fail during user tab interactions
+async function retryTabGroup(operation, maxRetries = 5) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (e) {
+      if (attempt === maxRetries - 1) throw e;
+      const delay = 300 * Math.pow(2, attempt); // 300ms, 600ms, 1200ms, 2400ms, 4800ms
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+}
+
 // Auto-create a Tab Group for the agent
 async function createAgentTabGroup() {
   try {
@@ -543,12 +556,12 @@ async function createAgentTabGroup() {
     }
     
     // Create a new group with the active tab
-    const groupId = await chrome.tabs.group({ tabIds: [activeTab.id] });
-    await chrome.tabGroups.update(groupId, { 
+    const groupId = await retryTabGroup(() => chrome.tabs.group({ tabIds: [activeTab.id] }));
+    await retryTabGroup(() => chrome.tabGroups.update(groupId, { 
       title: 'Lumi',
       color: 'blue',
       collapsed: false
-    });
+    }));
     agentGroupId = groupId;
     currentGroupId = groupId;
     return groupId;
@@ -560,15 +573,17 @@ async function createAgentTabGroup() {
 
 // Add the currently active tab to the agent's group
 async function addCurrentTabToGroup() {
-  if (!agentGroupId) return;
+  if (!agentGroupId) return { success: false, error: "No active agent group" };
   try {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     const activeTab = tabs[0];
     if (activeTab.groupId !== agentGroupId) {
-      await chrome.tabs.group({ tabIds: [activeTab.id], groupId: agentGroupId });
+      await retryTabGroup(() => chrome.tabs.group({ tabIds: [activeTab.id], groupId: agentGroupId }));
     }
+    return { success: true };
   } catch(e) {
     console.error("Failed to add tab to group:", e);
+    return { success: false, error: e.message };
   }
 }
 
