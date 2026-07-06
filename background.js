@@ -834,6 +834,7 @@ async function callDeepSeekAPI(messages, apiKey, contextId, loopCount = 0) {
                 payload: args
               });
               let parsedRes = null;
+              let actionFailed = false;
               try {
                 if (res && res.result && typeof res.result === 'string' && res.result.startsWith('{')) {
                   parsedRes = JSON.parse(res.result);
@@ -876,7 +877,6 @@ async function callDeepSeekAPI(messages, apiKey, contextId, loopCount = 0) {
                   }
                 } catch(e) {
                   debuggerUsed = false;
-                  // Debugger failed — use programmatic DOM events as fallback
                   broadcastStatus("Usando fallback program\u00e1tico...");
                   try {
                     const fallbackRes = await chrome.tabs.sendMessage(targetTabId, {
@@ -890,9 +890,11 @@ async function callDeepSeekAPI(messages, apiKey, contextId, loopCount = 0) {
                 }
               } else {
                 actionResult = res.result || actionResult;
+                actionFailed = true;
               }
               
-              if (args.action === 'type' && args.value) {
+              // Only attempt type/press_key if the action succeeded
+              if (!actionFailed && args.action === 'type' && args.value) {
                 let typedViaDebugger = false;
                 try {
                   broadcastStatus(`Inyectando texto a nivel de sistema...`);
@@ -952,8 +954,13 @@ async function callDeepSeekAPI(messages, apiKey, contextId, loopCount = 0) {
                 }
               }
               
-              broadcastStatus("Esperando a que la página cargue...");
-              await new Promise(r => setTimeout(r, 1500));
+              if (actionFailed && actionResult.includes("not found")) {
+                // Element not found — extract fresh context immediately, skip wait
+                broadcastStatus("Elemento no encontrado, re-escaneando p\u00e1gina...");
+              } else {
+                broadcastStatus("Esperando a que la p\u00e1gina cargue...");
+                await new Promise(r => setTimeout(r, 1500));
+              }
             }
 
             if (isAgentPaused) {
@@ -961,7 +968,11 @@ async function callDeepSeekAPI(messages, apiKey, contextId, loopCount = 0) {
             } else {
               broadcastStatus("Analizando nuevos cambios en pantalla...");
               const newPageContext = await extractFullContext();
-              actionResult += `\n\n--- NEW UPDATED FULL CONTEXT AFTER YOUR ACTION ---\n${newPageContext}\n\nAnalyze this new structure. If the task is not finished, invoke the tool again immediately.`;
+              if (actionResult.includes("not found")) {
+                actionResult += `\n\n[IMPORTANT] The element you referenced no longer exists on the page. Page layout changed. Here is the FRESH updated context with NEW element IDs:\n${newPageContext}\n\nUse the NEW IDs from above to complete your task.`;
+              } else {
+                actionResult += `\n\n--- NEW UPDATED FULL CONTEXT AFTER YOUR ACTION ---\n${newPageContext}\n\nAnalyze this new structure. If the task is not finished, invoke the tool again immediately.`;
+              }
             }
 
           } catch(e) {
