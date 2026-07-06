@@ -333,8 +333,23 @@ class DOMMapper {
       return `Scrolled ${direction} on main window.`;
     }
 
+    // press_key and scroll can work without a specific target
     if (targetId === undefined || targetId === null) {
+      if (action === 'scroll') {
+        window.scrollBy({ top: direction === 'down' ? window.innerHeight * 0.8 : -window.innerHeight * 0.8, behavior: 'smooth' });
+        return `Scrolled ${direction} on main window.`;
+      }
+      if (action === 'press_key') {
+        const el = document.activeElement || document.body;
+        el.focus();
+        return `Focused current active element and prepared for key press of "${key || 'Enter'}".`;
+      }
       throw new Error("Missing target_id for action: " + action);
+    }
+
+    // Validate target_id is numeric — prevent agent from sending element text as ID
+    if (isNaN(Number(targetId))) {
+      throw new Error(`Invalid target_id "${targetId}". Target IDs are NUMERIC (e.g. target_id: "5"). You sent the text "${targetId}" which is not a valid element ID. Look at the [CURRENT WEBPAGE CONTEXT] for elements with [ID:X] format and use the numeric ID.`);
     }
     const el = this.elementMap.get(targetId.toString());
     if (!el) {
@@ -447,8 +462,23 @@ class DOMMapper {
 
   // Programmatic fallback: dispatches real DOM events when debugger API is unavailable
   async executeProgrammatic({action, targetId, value, key, forceType, forceKey}) {
+    // press_key can work without targetId (uses active element or body)
+    if (forceKey && key && (targetId === undefined || targetId === null)) {
+      const el = document.activeElement || document.body;
+      el.focus();
+      const keyCode = key === 'Enter' ? 13 : key === 'Escape' ? 27 : key === 'Tab' ? 9 : 0;
+      const keyName = key === 'Enter' ? 'Enter' : key === 'Escape' ? 'Escape' : key === 'Tab' ? 'Tab' : key;
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: keyName, keyCode, code: keyName, bubbles: true, cancelable: true }));
+      el.dispatchEvent(new KeyboardEvent('keypress', { key: keyName, keyCode, code: keyName, bubbles: true, cancelable: true }));
+      el.dispatchEvent(new KeyboardEvent('keyup', { key: keyName, keyCode, code: keyName, bubbles: true, cancelable: true }));
+      return `Programmatic key press "${key}" on active element completed.`;
+    }
+
     if (targetId === undefined || targetId === null) {
       throw new Error("Missing target_id for programmatic action: " + action);
+    }
+    if (isNaN(Number(targetId))) {
+      throw new Error(`Invalid target_id "${targetId}" for programmatic action. Use numeric IDs only.`);
     }
     let el = this.elementMap.get(targetId.toString());
     if (!el) {

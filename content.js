@@ -42,7 +42,7 @@ function showControlOverlay() {
     overlayElement.id = 'deepseek-agent-overlay';
     
     // Shadow DOM to isolate styles
-    const shadow = overlayElement.attachShadow({ mode: 'closed' });
+    const shadow = overlayElement.attachShadow({ mode: 'open' });
     
     const style = document.createElement('style');
     style.textContent = `
@@ -50,7 +50,8 @@ function showControlOverlay() {
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.4);
-        pointer-events: none;
+        pointer-events: auto;
+        cursor: not-allowed;
         z-index: 2147483645;
         transition: opacity 0.3s ease;
       }
@@ -140,6 +141,21 @@ function showControlOverlay() {
     document.documentElement.appendChild(overlayElement);
   }
   overlayElement.style.display = 'block';
+  
+  // Block user keyboard and scroll interaction
+  if (!window.__lumiBlockersInstalled) {
+    window.__lumiBlockersInstalled = true;
+    window.__lumiBlockKey = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.__lumiBlockScroll = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.__lumiBlockWheel = (e) => { e.preventDefault(); e.stopPropagation(); };
+    window.__lumiBlockContext = (e) => { e.preventDefault(); e.stopPropagation(); };
+  }
+  document.addEventListener('keydown', window.__lumiBlockKey, { capture: true, passive: false });
+  document.addEventListener('keyup', window.__lumiBlockKey, { capture: true, passive: false });
+  document.addEventListener('keypress', window.__lumiBlockKey, { capture: true, passive: false });
+  document.addEventListener('wheel', window.__lumiBlockWheel, { capture: true, passive: false });
+  document.addEventListener('scroll', window.__lumiBlockScroll, { capture: true, passive: false });
+  document.addEventListener('contextmenu', window.__lumiBlockContext, { capture: true });
 }
 
 function hideControlOverlay() {
@@ -150,6 +166,15 @@ function hideControlOverlay() {
   const cursor = document.getElementById('deepseek-simulated-cursor');
   if (cursor) {
     cursor.remove();
+  }
+  // Restore user interaction
+  if (window.__lumiBlockKey) {
+    document.removeEventListener('keydown', window.__lumiBlockKey, { capture: true });
+    document.removeEventListener('keyup', window.__lumiBlockKey, { capture: true });
+    document.removeEventListener('keypress', window.__lumiBlockKey, { capture: true });
+    document.removeEventListener('wheel', window.__lumiBlockWheel, { capture: true });
+    document.removeEventListener('scroll', window.__lumiBlockScroll, { capture: true });
+    document.removeEventListener('contextmenu', window.__lumiBlockContext, { capture: true });
   }
 }
 

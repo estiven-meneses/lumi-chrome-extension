@@ -583,7 +583,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'message-actions';
     
-    if (role === 'assistant') {
+    // Copy button function (reused for both roles)
+    function createCopyBtn() {
       const copyBtn = document.createElement('button');
       copyBtn.className = 'action-btn copy-btn';
       copyBtn.title = 'Copiar mensaje';
@@ -595,8 +596,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
         }, 2000);
       });
-      actionsDiv.appendChild(copyBtn);
+      return copyBtn;
+    }
+
+    if (role === 'assistant') {
+      actionsDiv.appendChild(createCopyBtn());
     } else if (role === 'user' && index !== undefined) {
+      actionsDiv.appendChild(createCopyBtn());
       const editBtn = document.createElement('button');
       editBtn.className = 'action-btn edit-btn';
       editBtn.title = 'Editar y regenerar';
@@ -842,6 +848,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     agentControlBar.classList.add('hidden');
   }
 
+  function appendPausedMessage() {
+    currentMessageIndex++;
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message assistant';
+    msgDiv.dataset.index = currentMessageIndex;
+
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'avatar';
+    avatarDiv.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="var(--accent-color)"><path d="M12 12 L 4.9 4.9 A 10 10 0 1 1 4.9 19.1 Z" /></svg>`;
+    msgDiv.appendChild(avatarDiv);
+
+    const bodyDiv = document.createElement('div');
+    bodyDiv.className = 'message-body';
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'content';
+    contentDiv.innerHTML = `<em>Agente detenido.</em>`;
+
+    const resumeBtn = document.createElement('button');
+    resumeBtn.className = 'primary-btn-sm';
+    resumeBtn.style.cssText = 'margin-top: 10px; display: flex; align-items: center; gap: 6px;';
+    resumeBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Reanudar tarea`;
+    resumeBtn.addEventListener('click', () => {
+      resumeBtn.disabled = true;
+      resumeBtn.textContent = 'Reanudando...';
+      showControlBar("Reanudando bucle del agente...");
+      chrome.runtime.sendMessage({ type: 'RESUME_AGENT' });
+    });
+
+    contentDiv.appendChild(resumeBtn);
+    bodyDiv.appendChild(contentDiv);
+    msgDiv.appendChild(bodyDiv);
+    chatHistoryContainer.appendChild(msgDiv);
+    chatHistoryContainer.scrollTop = chatHistoryContainer.scrollHeight;
+  }
+
   async function updateCurrentTabInfo() {
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       const activeTab = tabs[0];
@@ -891,7 +933,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       showControlBar(message.payload);
     } else if (message.type === 'AGENT_PAUSED') {
       hideControlBar();
-      appendMessage('assistant', '*Agente detenido. Escribe "continuar" para retomar la tarea.*');
+      appendPausedMessage();
     }
   });
 
