@@ -828,15 +828,7 @@ async function callDeepSeekAPI(messages, apiKey, contextId, loopCount = 0) {
               await new Promise(r => setTimeout(r, 500));
               actionResult = `Switched focus to tab ${targetTabId}.`;
             } else {
-              // Ensure the tab we are acting on is active so the user can see it
-              const tab = await chrome.tabs.get(targetTabId);
-              if (!tab.active) {
-                broadcastStatus(`Enfocando pestaña ${targetTabId}...`);
-                await chrome.tabs.update(targetTabId, { active: true });
-                await new Promise(r => setTimeout(r, 500));
-              }
-
-              broadcastStatus(`Ejecutando ${args.action} en pestaña ${targetTabId}...`);
+              broadcastStatus(`Ejecutando ${args.action} en pesta\u00f1a ${targetTabId}...`);
               const res = await chrome.tabs.sendMessage(targetTabId, {
                 type: 'EXECUTE_ACTION',
                 payload: args
