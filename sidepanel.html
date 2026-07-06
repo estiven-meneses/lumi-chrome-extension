@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumi AI</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Setup Screen (only shown on first install) -->
+  <div id="setup-view" class="view-container">
+    <div class="setup-content">
+      <div class="logo-container">
+        <img src="icon128.png" width="64" height="64" alt="Lumi AI Logo" style="border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+      </div>
+      <h1 class="title">Bienvenido a Lumi AI</h1>
+      <p class="subtitle">Para activar tu asistente, se recomienda usar una API Key de DeepSeek. Se guardará de forma local.</p>
+      
+      <div class="input-group">
+        <input type="password" id="api-key-input" placeholder="sk-..." autocomplete="off">
+        <button id="save-key-btn" class="primary-btn">Continuar</button>
+      </div>
+      <div id="setup-error" class="error-msg hidden">Introduce una API Key válida (debe empezar con sk-).</div>
+    </div>
+  </div>
+
+  <!-- Main Chat Screen -->
+  <div id="chat-view" class="view-container hidden">
+    <header class="header">
+      <div class="header-left">
+        <img src="icon128.png" width="24" height="24" alt="Lumi AI Logo" style="border-radius: 6px;">
+        <h1>Lumi AI</h1>
+      </div>
+      <div class="header-right">
+        <button id="new-chat-btn" title="Nuevo Chat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Nuevo Chat
+        </button>
+        <button id="settings-btn" class="icon-btn" title="Configuración">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Settings Panel (overlay, hidden by default) -->
+    <div id="settings-panel" class="settings-panel hidden">
+      <div class="settings-header">
+        <h2>Configuración</h2>
+        <button id="close-settings-btn" class="icon-btn" title="Cerrar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <div class="balance-card" id="api-balance-card" style="display: none;">
+          <div class="balance-header">
+            <span>Crédito de API (Disponible)</span>
+            <span id="balance-percentage">--%</span>
+          </div>
+          <div class="balance-bar-bg">
+            <div id="balance-bar-fill" class="balance-bar-fill" style="width: 0%"></div>
+          </div>
+          <div class="balance-details" id="balance-details">Consultando...</div>
+          <div class="balance-total-row" style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
+            <label style="font-size: 11px; color: var(--text-secondary);">Fondo total (USD):</label>
+            <input type="number" id="balance-total-invested" class="settings-input" style="width: 60px; padding: 4px; font-size: 11px; text-align: right;" placeholder="2.00" step="0.5" min="0">
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <label class="settings-label">API Key de DeepSeek</label>
+          <div class="settings-key-row">
+            <input type="password" id="settings-api-key" class="settings-input" placeholder="sk-..." autocomplete="off">
+            <button id="save-settings-key-btn" class="primary-btn-sm">Guardar</button>
+          </div>
+          <span id="settings-saved-msg" class="settings-saved hidden">✓ Guardada correctamente</span>
+        </div>
+        
+        <hr class="settings-divider">
+
+        <div class="settings-group">
+          <label class="settings-label">Tema de la interfaz</label>
+          <select id="settings-theme" class="settings-input" style="padding: 8px;">
+            <option value="auto">Automático (Sistema)</option>
+            <option value="light">Claro</option>
+            <option value="dark">Oscuro</option>
+          </select>
+          
+          <label class="settings-label" style="margin-top: 12px;">Tamaño y Espaciado</label>
+          <select id="settings-size" class="settings-input" style="padding: 8px;">
+            <option value="normal">Normal (Amplio)</option>
+            <option value="compact">Compacto (Denso)</option>
+          </select>
+        </div>
+        
+        <hr class="settings-divider">
+        
+        <div class="settings-group">
+          <h3 class="settings-title">Perfil del Usuario</h3>
+          <p class="settings-desc">La IA usará estos datos automáticamente en tus búsquedas.</p>
+          
+          <label class="settings-label">Nombre</label>
+          <input type="text" id="profile-name" class="settings-input" placeholder="Ej: Estiven">
+          
+          <label class="settings-label">Email</label>
+          <input type="email" id="profile-email" class="settings-input" placeholder="Ej: estiven@example.com">
+          
+          <label class="settings-label">País / Ciudad</label>
+          <input type="text" id="profile-location" class="settings-input" placeholder="Ej: Popayán, Colombia">
+          
+          <label class="settings-label">Preferencias adicionales</label>
+          <textarea id="profile-prefs" class="settings-textarea" placeholder="Ej: Soy desarrollador frontend, prefiero colores oscuros..."></textarea>
+          
+          <div style="text-align: right; margin-top: 10px;">
+            <button id="save-profile-btn" class="primary-btn-sm">Guardar Perfil</button>
+          </div>
+          <span id="profile-saved-msg" class="settings-saved hidden" style="display:block;text-align:right;">✓ Perfil guardado</span>
+        </div>
+
+        <hr class="settings-divider">
+
+        <div class="settings-group">
+          <h3 class="settings-title">Opciones de Desarrollador</h3>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-primary); font-size: 13px; margin-top: 8px;">
+            <input type="checkbox" id="settings-show-qa-btn" style="accent-color: var(--accent-color);">
+            Mostrar botón de Modo Testeo (QA) en la interfaz
+          </label>
+        </div>
+
+        <hr class="settings-divider">
+
+        <div class="settings-group">
+          <button id="delete-key-btn" class="danger-btn-full">Eliminar Datos y Cerrar Sesión</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-history" id="chat-history">
+      <!-- Messages will be injected here -->
+    </div>
+
+    <!-- Agent Control Bar (Hidden by default) -->
+    <div id="agent-control-bar" class="control-bar hidden">
+      <div class="status-text" id="agent-status-text">Pensando...</div>
+      <button id="stop-btn" class="danger-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+        Detener
+      </button>
+    </div>
+
+    <div class="input-area">
+      <div id="mention-popup" class="mention-popup hidden"></div>
+      <div class="context-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px;">
+        <div class="context-indicator" style="margin-bottom: 0; flex: 1; min-width: 0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <span id="current-tab-domain">Leyendo página...</span>
+        </div>
+        <div style="display: flex; gap: 4px;">
+          <button id="toggle-test-btn" class="icon-btn" title="Modo Testeo: Capturar Errores (Inactivo)" style="flex-shrink: 0; padding: 4px 8px; border-radius: 12px; border: 1px solid var(--border-color); font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 4px; background: var(--bg-surface); color: var(--text-secondary); transition: all 0.2s;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M9 15h6"></path><path d="M9 11h6"></path></svg>
+            QA Test
+          </button>
+          <button id="add-tab-btn" class="icon-btn" title="Añadir otra pestaña al contexto" style="flex-shrink: 0; padding: 4px 8px; border-radius: 12px; border: 1px solid var(--border-color); font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 4px; background: var(--bg-surface); color: var(--text-primary); transition: all 0.2s;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Pestaña
+          </button>
+        </div>
+      </div>
+      <!-- Image Preview Container (hidden by default) -->
+      <div id="image-preview-area" class="image-preview-area hidden">
+        <div id="image-thumbnails" class="image-thumbnails"></div>
+        <div id="ocr-status" class="ocr-status hidden">Extrayendo texto...</div>
+      </div>
+      <div class="input-box">
+        <button id="attach-btn" class="attach-btn" title="Adjuntar imagen">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+        </button>
+        <textarea id="chat-input" class="chat-input" placeholder="Pregunta algo o pega una imagen..." rows="1"></textarea>
+        <button id="send-btn" class="send-btn" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
+      <input type="file" id="file-input" accept="image/*" class="hidden">
+      <div class="footer-note">Lumi AI · Pega capturas con Ctrl+V</div>
+    </div>
+  </div>
+  <iframe id="ocr-sandbox" src="ocr-sandbox.html" class="hidden"></iframe>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="js/sidepanel.js"></script>
+</body>
+</html>

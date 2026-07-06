@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>OCR Sandbox</title>
+</head>
+<body>
+  <script src="vendor/tesseract/tesseract.min.js"></script>
+  <script>
+    window.addEventListener('message', async (event) => {
+      // Allow messages from the extension
+      if (event.data && event.data.type === 'RUN_OCR') {
+        const { id, dataUrl } = event.data;
+        try {
+          // Initialize Tesseract worker with local paths to bypass CSP
+          const worker = await Tesseract.createWorker('spa', 1, {
+            workerPath: 'vendor/tesseract/worker.min.js',
+            corePath: 'vendor/tesseract/tesseract-core.wasm.js',
+            logger: m => console.log(m)
+          });
+          const ret = await worker.recognize(dataUrl);
+          await worker.terminate();
+          
+          event.source.postMessage({
+            type: 'OCR_RESULT',
+            id: id,
+            text: ret.data.text.trim()
+          }, event.origin);
+        } catch (error) {
+          event.source.postMessage({
+            type: 'OCR_ERROR',
+            id: id,
+            error: error.toString()
+          }, event.origin);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
