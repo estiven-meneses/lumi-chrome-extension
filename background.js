@@ -433,11 +433,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   else if (message.type === 'CLEAR_HISTORY') {
+    // Full reset: stop agent, hide overlay, clear history
+    isAgentPaused = true;
+    toggleOverlay(false);
+    
     chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
       if (tabs[0]) {
         const contextId = getContextIdForTab(tabs[0]);
         chatHistories[contextId] = [SYSTEM_PROMPT];
         saveHistory();
+        // Clear visual marks on the active tab
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'CLEAR_MARKS' }).catch(()=>{});
       }
       sendResponse({ success: true });
     });

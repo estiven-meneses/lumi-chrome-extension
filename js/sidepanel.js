@@ -286,10 +286,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Chat View Logic
   // ==========================================
   newChatBtn.addEventListener('click', () => {
+    // Full reset: clear everything and start fresh
     chrome.runtime.sendMessage({ type: 'CLEAR_HISTORY' }, () => {
       chatHistoryContainer.innerHTML = '';
+      currentMessageIndex = 0;
       showWelcomeCard();
       hideControlBar();
+      pendingImages = [];
+      clearImages();
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+      sendBtn.disabled = true;
+      chatInput.focus();
     });
   });
 
